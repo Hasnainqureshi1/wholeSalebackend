@@ -9,25 +9,37 @@ const { createUser, setCustomUserClaims } = admin.auth();
 const { doc, collection } = admin.firestore();
 // admin.auth().ref 
 // admin.firestore().collection('users').add
-// Middleware to verify user's role
+
+const currentDate = new Date();
+                   
+// Get the year, month, and day components from the date object
+const year = currentDate.getFullYear();
+const month = String(currentDate.getMonth() + 1).padStart(2, '0'); // Months are zero-based, so add 1
+const day = String(currentDate.getDate()).padStart(2, '0');
+
+// Format the date as "YYYY-MM-DD"
+const formattedDate = `${year}-${month}-${day}`;
+
+
+ // Middleware to verify user's role
 router.post('/user-role', 
 
   async (req, res) => {
   try {
     const {authorization}  = req.headers;
-    console.log("api call")
+ 
     // const idtoken =
     // "eyJhbGciOiJSUzI1NiIsImtpZCI6IjNiYjg3ZGNhM2JjYjY5ZDcyYjZjYmExYjU5YjMzY2M1MjI5N2NhOGQiLCJ0eXAiOiJKV1QifQ.eyJyb2xlIjoiYWRtaW4iLCJpc3MiOiJodHRwczovL3NlY3VyZXRva2VuLmdvb2dsZS5jb20vd2hvbGVzYWxlLWY0ZjQwIiwiYXVkIjoid2hvbGVzYWxlLWY0ZjQwIiwiYXV0aF90aW1lIjoxNzA5Mjk5ODY0LCJ1c2VyX2lkIjoiZDhNNzFaYXFwTllOYUx3Q3NFTENmOWRtYWV2MSIsInN1YiI6ImQ4TTcxWmFxcE5ZTmFMd0NzRUxDZjlkbWFldjEiLCJpYXQiOjE3MDkyOTk4NjQsImV4cCI6MTcwOTMwMzQ2NCwiZW1haWwiOiJ1c21hbkBnbWFpbC5jb20iLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsImZpcmViYXNlIjp7ImlkZW50aXRpZXMiOnsiZW1haWwiOlsidXNtYW5AZ21haWwuY29tIl19LCJzaWduX2luX3Byb3ZpZGVyIjoicGFzc3dvcmQifX0.fP657fjkqxVqP-zcQD6f4bKhWj-WAFNnPqILJ63_Yx31OeBuRzNqjG_55u_be1cswNHcRTrW2Dlra1fMaXKRFs_JSPTHAxU54__IUTkEHPpW3W0kk1r5-wM5TuHMYnoVWvJrxUz-1zogpWuGWavHZTAMxRdV3WhRv2mfPeN19hZWlIUB_yYqCWRBdbMckEUrjN1nYiCBO4UE300dDMWWna4zYtdKMSXG07CyDtP46xBce3rCVZfUauwpxYXHVRRfnQH7bgwdQOOqHhXaX789sLIOe03HwT7xBzCAbkoy1AXymngnDaF4S_HGr1qxI-xcGVCN1qFLuD6az3og3BZ83A";
     // admin.auth().
     const decodedToken = await admin.auth().verifyIdToken(authorization);
     const uid = decodedToken.uid;
-    console.log(uid);
+   
 
     // Fetch user's custom claims to determine role
     const userRecord = await admin.auth().getUser(uid);
     const role = userRecord.customClaims.role;
    
-    console.log(role);
+   
 
     // Set user's role in request object
     req.role = role;
@@ -37,7 +49,7 @@ router.post('/user-role',
     res.status(401).json({ error: "Unauthorized" });
   }
 }
-);
+);//nodemon 
 const verifyUserRole = async (req, res, next) => {
   try {
     const idtoken = req.headers.authorization;
@@ -74,7 +86,7 @@ async function setCustomClaims(uid, role) {
     console.error("Error setting custom claims:", error);
   }
 }
- 
+
 //route for creating admin 
 router.post("/create-admin", verifyUserRole, async (req, res) => {
   try {
@@ -110,46 +122,18 @@ router.post("/create-admin", verifyUserRole, async (req, res) => {
   }
 });
 
-
-// DELETE route to delete user by UID
-router.delete('/users',verifyUserRole, async (req, res) => {
-  try {
-    // const uid = req.params.uid;
-    const uid = req.body.uid;
-    const {role} = req
-
-    console.log(role);
-    if(role === 'admin') {
-    // Delete user from Firebase Authentication
-    
-   await admin.auth().deleteUser(uid);
-
-    // Delete user document from Firestore
-    const adminDocRef = admin
-    .firestore()
-    .collection("users")
-    .doc(uid);
- await adminDocRef.delete();
+ 
+// deleteAllUsers();
 
 
-    res.status(200).json({ message: 'User deleted successfully' });
-    }
-    else{
-      res.status(401).json({ message: 'You are not authorized' });
-    }
-  } catch (error) {
-    console.error('Error deleting user:', error);
-    res.status(500).json({ error: 'Failed to delete user' });
-  }
-});
 
 //route for creating seller 
-router.post("/create-seller", verifyUserRole, async (req, res) => {
+router.post("/create-seller",verifyUserRole, async (req, res) => {
   try {
     const { email, password, name,shopName  } = req.body;
     const {role} = req
 
-    console.log(role);
+    // console.log(role);
     if(role === 'admin') {
         // Create user in Firebase Authentication
     const userCredential = await admin.auth().createUser({
@@ -166,14 +150,19 @@ router.post("/create-seller", verifyUserRole, async (req, res) => {
     await DocRef.set({
       email,
       name,
+      role:"seller",
+
     });
     const sellerDocRef = admin.firestore().collection("sellers").doc(userCredential.uid);
-    await DocRef.set({
+    await sellerDocRef.set({
       shopName,
+      date:admin.firestore.Timestamp.fromDate(new Date(formattedDate)),
+      total_sales:0,
+      items:0,
       
     });
-    const idToken = await admin.auth().createCustomToken(userCredential.uid);
-    res.status(200).json({ message: "Admin created successfully", idToken });
+    // const idToken = await admin.auth().createCustomToken(userCredential.uid);
+    res.status(200).json({ message: "Seller created successfully" });
     }
     else{
       res.status(401).json({ message: "Unauthorized" });
@@ -184,32 +173,189 @@ router.post("/create-seller", verifyUserRole, async (req, res) => {
 
     
   } catch (error) {
-    console.error("Error creating Seller:", error.message);
+    console.error("Erro r creating Seller:", error.message);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
+//route for membership create 
+router.post("/create-membership", async (req, res) => {
+  try {
+    const { email, password  } = req.body;
+     
+// Name occupation avg salary monthly city number 
+// memebership request true > enter email and password screen 
+// check memebrship request ? enter email , request ok ? (check user already created or not in users collection by email ? move to login screen: create account using email and password) : (admin still not accepted and will check request status in membership_request collection ) if membership_request statis true return to login screen   
+const membershipSnap = await admin.firestore().collection('membership_request').where('email', '==', email).get();
+const membershipReqData = membershipSnap.docs[0].data();
+const { name, occupation, avg_salary, city, number } = membershipReqData;
+console.log(membershipReqData);
+
+    //   const DocRef = admin
+    //   .firestore()
+    //   .collection("membership_request")
+    //   .doc();
+ 
+    // await DocRef.set({
+    //   email,
+    //   name,
+    //   role:"member",
+    //   occupation,
+    //   avg_salary,
+    //   city,
+    //   number,
+    //   date:admin.firestore.Timestamp.fromDate(new Date(formattedDate)),
+    //   status:'pending'
+
+    // });
+ 
+     
+    res.status(200).json({ message: "MemberShip Request sent successfully" });
+     
+  } catch (error) {
+    console.error("Erro r creating Seller:", error.message);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+//route for membership request 
+router.post("/request-membership", async (req, res) => {
+  try {
+    const { email, name, occupation, avg_salary, city, number } = req.body;
+    // Check if the document already exists
+    const membershipQuery = await admin.firestore().collection("membership_request").where("email", "==", email).get();
+
+    if (!membershipQuery.empty) {
+      // If document already exists, return a response indicating the request has already been sent
+      return res.status(400).json({ error: "Membership request for this email already exists" });
+    }
+
+    // Create the document if it doesn't exist
+    const membershipRef = admin.firestore().collection("membership_request").doc(); // Create a new document reference
+    await membershipRef.set({
+      email,
+      name,
+      occupation,
+      avg_salary,
+      city,
+      number,
+      date: admin.firestore.Timestamp.fromDate(new Date(formattedDate)),
+      status: 'pending'
+    });
+
+    res.status(200).json({ message: "Membership request sent successfully" });
+
+  } catch (error) {
+    console.error("Error creating membership request:", error.message);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// DELETE route to delete user by UID
+router.delete('/seller', verifyUserRole, async (req, res) => {
+  try {
+    const { role } = req;
+    const userIds = req.body.sellerId; // Assuming the request body contains an array of user IDs
+
+    console.log(userIds);
+    if (role === 'admin') {
+       
+      // Delete users from Firebase Authentication
+      const deletePromises = userIds.map(uid => admin.auth().deleteUser(uid));
+      await Promise.all(deletePromises);
+
+      // Delete user documents from Firestore
+      const deleteDocPromises = userIds.map(async (uid) => {
+        // Delete user documents from Firestore
+        await admin.firestore().collection("users").doc(uid).delete();
+        await admin.firestore().collection("sellers").doc(uid).delete();
+      
+        // Delete products where seller_id is equal to uid
+        const productsSnapshot = await admin.firestore().collection("products").where("seller_id", "==", uid).get();
+        const deleteProductsPromises = productsSnapshot?.docs.map((doc) => doc.ref.delete());
+        await Promise.all(deleteProductsPromises);
+      });
+      
+      await Promise.all(deleteDocPromises);
+       
+
+      res.status(200).json({ message: 'Users deleted successfully' });
+    } else {
+      res.status(401).json({ message: 'You are not authorized' });
+    }
+  } catch (error) {
+    console.error('Error deleting users:', error);
+    res.status(500).json({ error: 'Failed to delete users' });
+  }
+});
+// Endpoint to update Admin Password data 
+router.put("/update-admin-password", verifyUserRole, async (req, res) => {
+  try {
+    const {password,uid} = req.body;
+ 
+    // Create user in Firebase Authentication
+    
+    admin.auth().updateUser(uid, {
+      password
+    });
+ 
+   
+
+    res.status(200).json({ message: "Admin Password Updated successfully" });
+  } catch (error) {
+    console.error("Error Updating Password admin:", error.message);
+    res.status(500).json({ error: error.message })
+  }
+});
+router.put("/update-admin-profile", verifyUserRole, async (req, res) => {
+  try {
+    const { email, uid, name } = req.body;
+    console.log(email);
+    console.log(name);
+    // Create user in Firebase Authentication
+
+    admin.auth().updateUser(uid, {
+      email: email, displayName:name,
+    });
+ 
+    //adding data in firestore
+    const adminDocRef = admin
+      .firestore()
+      .collection("users")
+      .doc(uid);
+    
+    await adminDocRef.update({
+      email,
+      name,
+     
+    });
+
+    res.status(200).json({ message: "Admin Updated successfully" });
+  } catch (error) {
+    console.error("Error creating admin:", error.message);
+    res.status(500).json({ error: error.message })
+  }
+});
 // Endpoint to fetch data based on user's role
 router.get("/fetch-seller", async (req, res) => {
   try {
     //  const { role } = req;
     const userRecord = await admin
       .auth()
-      .getUser("dVQMKCJ5KpY4QqwgXgTGNTQdh903");
+      .getUser("8WjcOQgId4V6VHgzpuxneHrD84s2");
     const role = userRecord.customClaims.role;
     console.log(role);
-    //  if (role === 'admin') {
-    //    // Fetch all sellers' data
-    //    const sellersSnapshot = await firestore.collection('users').where('role', '==', 'seller').get();
-    //    const sellersData = sellersSnapshot.docs.map(doc => doc.data());
-    //    res.status(200).json({ data: sellersData });
-    //  } else if (role === 'seller') {
-    //    // Fetch data for the current seller
-    //    const uid = req.user.uid;
-    //    const sellerDoc = await firestore.collection('users').doc(uid).get();
-    //    const sellerData = sellerDoc.data();
-    //    res.status(200).json({ data: sellerData });
-    //  }
+     if (role !== 'admin') {
+       // Fetch all sellers' data
+       const sellersSnapshot = await admin.firestore().collection('users').where('role', '==', 'seller').get();
+       const sellersData = sellersSnapshot.docs.map(doc => doc.data());
+       res.status(200).json({ data: sellersData });
+     } else if (role === 'seller') {
+       // Fetch data for the current seller
+       const uid = req.user.uid;
+       const sellerDoc = await firestore.collection('users').doc(uid).get();
+       const sellerData = sellerDoc.data();
+       res.status(200).json({ data: sellerData });
+     }
   } catch (error) {
     console.error("Error fetching data:", error.message);
     res.status(500).json({ error: "Internal Server Error" });
