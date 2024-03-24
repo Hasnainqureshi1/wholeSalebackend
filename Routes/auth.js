@@ -49,7 +49,7 @@ router.post('/user-role',
     res.status(401).json({ error: "Unauthorized" });
   }
 }
-);//nodemon 
+);
 const verifyUserRole = async (req, res, next) => {
   try {
     const idtoken = req.headers.authorization;
@@ -173,82 +173,12 @@ router.post("/create-seller",verifyUserRole, async (req, res) => {
 
     
   } catch (error) {
-    console.error("Erro r creating Seller:", error.message);
-    res.status(500).json({ error: "Internal Server Error" });
+    console.error("Error creating Seller:", error.message);
+    res.status(500).json({ statusText:  error.message });
   }
 });
 
-//route for membership create 
-router.post("/create-membership", async (req, res) => {
-  try {
-    const { email, password  } = req.body;
-     
-// Name occupation avg salary monthly city number 
-// memebership request true > enter email and password screen 
-// check memebrship request ? enter email , request ok ? (check user already created or not in users collection by email ? move to login screen: create account using email and password) : (admin still not accepted and will check request status in membership_request collection ) if membership_request statis true return to login screen   
-const membershipSnap = await admin.firestore().collection('membership_request').where('email', '==', email).get();
-const membershipReqData = membershipSnap.docs[0].data();
-const { name, occupation, avg_salary, city, number } = membershipReqData;
-console.log(membershipReqData);
 
-    //   const DocRef = admin
-    //   .firestore()
-    //   .collection("membership_request")
-    //   .doc();
- 
-    // await DocRef.set({
-    //   email,
-    //   name,
-    //   role:"member",
-    //   occupation,
-    //   avg_salary,
-    //   city,
-    //   number,
-    //   date:admin.firestore.Timestamp.fromDate(new Date(formattedDate)),
-    //   status:'pending'
-
-    // });
- 
-     
-    res.status(200).json({ message: "MemberShip Request sent successfully" });
-     
-  } catch (error) {
-    console.error("Erro r creating Seller:", error.message);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-//route for membership request 
-router.post("/request-membership", async (req, res) => {
-  try {
-    const { email, name, occupation, avg_salary, city, number } = req.body;
-    // Check if the document already exists
-    const membershipQuery = await admin.firestore().collection("membership_request").where("email", "==", email).get();
-
-    if (!membershipQuery.empty) {
-      // If document already exists, return a response indicating the request has already been sent
-      return res.status(400).json({ error: "Membership request for this email already exists" });
-    }
-
-    // Create the document if it doesn't exist
-    const membershipRef = admin.firestore().collection("membership_request").doc(); // Create a new document reference
-    await membershipRef.set({
-      email,
-      name,
-      occupation,
-      avg_salary,
-      city,
-      number,
-      date: admin.firestore.Timestamp.fromDate(new Date(formattedDate)),
-      status: 'pending'
-    });
-
-    res.status(200).json({ message: "Membership request sent successfully" });
-
-  } catch (error) {
-    console.error("Error creating membership request:", error.message);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
 
 // DELETE route to delete user by UID
 router.delete('/seller', verifyUserRole, async (req, res) => {
